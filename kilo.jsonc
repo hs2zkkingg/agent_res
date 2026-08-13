@@ -1,0 +1,32 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "model": "deepseek/deepseek-v4-pro",
+  "agent": {
+    "code": {
+      "model": "deepseek/deepseek-v4-pro",
+      "variant": "high"
+    }
+  },
+  "permission": {
+    "bash": "allow",
+    "read": "allow",
+    "edit": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "task": "allow",
+    "lsp": "allow",
+    "skill": "allow",
+    "semantic_search": "allow",
+    "kilo_memory_save": "allow",
+    "kilo_memory_recall": "allow",
+    "todowrite": "allow",
+    "todoread": "allow",
+    "question": "allow",
+    "external_directory": "allow"
+  },
+  "auto_collapse_reasoning": true,
+  "terminal_command_display": "collapsed"
+}
