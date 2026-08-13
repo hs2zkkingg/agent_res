@@ -273,20 +273,15 @@ height = round(h_ratio * scale / multiple) * multiple
   - **加载范围确认**（源码 pipeline_minimax_h3.py:581 实锤）：`model_path = model_root / ("Ref2VA" if partition=="ref2va" else "FL2VA")` —— ref2va 只加载 **Ref2VA 目录**（transformer 62G + 共享组件 text_encoder 67G/VAE ≈ 133G），**FL2VA/transformer 66G 不加载**
 - **多图**：`input_references=`（复数，可重复传多张）**≤12 张**（本地上限，官方 API ≤9）
 - **单图**：`input_reference=`（与复数互斥，二选一）
-### 本地生成默认后处理流程（2026-08-13 定案, 02:30 策略修正；2026-08-14 插帧默认关闭）
-- **默认出片输出双格式**：
-  1. **无损中间格式**（H.264 crf=0, `extra_params.video_codec_options={"crf":"0"}`）——供后续超分插帧
-  2. **H.264 High 预览格式**（正常 crf, 文件小）——供用户快速评估
-- **评估门控（超分插帧不自动跑）**：
-  1. 通知用户下载**预览格式**评估
-  2. 用户评估通过且**显式告知**进行超分插帧 → 才基于**无损数据**执行
-  3. 流程：2x 超分（RealESRGAN_x2plus）→ ~~2x 插帧（RIFE 24→48fps）~~ → 最终交付编码（H.264 High, 正常 crf）
-  4. 完成后通知用户下载成品，并**询问是否删除原始无损视频**（文件大 ~100-500MB，用户确认才删）
-- **⚠️ 插帧默认关闭（2026-08-14 用户决策）**：实测 2x 插帧（RIFE 4.26 48fps）引起画面劣化，用户判定"怀疑是插帧引起的"→ **默认只超分不插帧**；`postprocess_torch.sh` 已加 `INTERP` 开关（默认 0=不插帧，`INTERP=1` 才插帧）；超分版交付物 = `<stem>_x2_h264.mp4`（24fps 保持原帧率）
-- 重编码耗时很短（x264 压缩 ~20-60s, 无模型推理），预览格式零额外成本
-- 依据：插帧/超分对压缩伪影敏感，基于无损数据处理质量最优；但超分插帧耗时（3-18 分钟），先预览评估再后处理避免浪费
+### 出片流程（2026-08-14 用户定案：取消超分插帧，直接交付）
+- **所有流程都不做超分和插帧**——模型输出直接为高质量 H.264 编码 MP4 即最终交付物
+- 编码要求：**H.264 High profile**（CABAC+B 帧），ComfyUI SaveVideo 节点 `codec=auto` 已满足（实测输出 High ~3.6Mbps @ 1376×768，质量良好）
+- 验收：ffprobe 确认 `h264 (High)` + 画面抽帧正常 + 音频存在
+- 旧后处理流程（双格式无损 crf=0 / 预览评估门控 / 2x 超分 / 2x 插帧）**已废弃**：
+  - `postprocess_torch.sh`（超分插帧流水线）不再在出片流程中调用；工具链资产（Real-ESRGAN/Practical-RIFE/basicsr）保留在共享盘 tools/ 不删，脚本保留备查
+  - 插帧默认关闭是 2026-08-14 上午决策；晚间决策进一步取消全部后处理——超分也不再做
 
-### torch 后处理工具链（2026-08-14 方案 B ComfyUI 机搭通，AutoDL 共享盘）
+### torch 后处理工具链（2026-08-14 方案 B ComfyUI 机搭通，AutoDL 共享盘；⚠️ 已废弃：出片不再做超分插帧，资产保留备查）
 - **位置**：`/root/autodl-fs/tools/`——`Real-ESRGAN`（master 代码+weights/RealESRGAN_x2plus.pth）、`Practical-RIFE`（train_log/ = 4.26 权重 IFNet_HDv3.py+RIFE_HDv3.py+flownet.pkl+refine.py）、`basicsr`（PYTHONPATH 版）、`realesrgan_torch/`、`rife_torch/`、`ffmpeg`（静态 7.0.2）
 - **入口**：`ops/postprocess_torch.sh <input.mp4> [outdir]`（超分→可选插帧→H.264 High crf16 medium），支持断点续跑（产物>1MB 判完成）
 - **依赖**：comfyui_venv python（torch 2.12.1+cu130, numpy 2.4.6）+ opencv-python-headless + ffmpeg-python + pyyaml/scipy/lmdb；basicsr 走 PYTHONPATH（`pip install basicsr` 卡 PEP517 tb-nightly 20 分钟，弃用）
@@ -321,6 +316,28 @@ height = round(h_ratio * scale / multiple) * multiple
 - **seed（2026-08-12 决策）**：**默认随机**（`$((RANDOM*32768+RANDOM))`，脚本未传参时），**特殊说明才固定**（对比/复现场景，如 v1↔v2 同 seed 验证 prompt 改动）。本地 vllm-omni 支持 seed（torch.Generator 播种视频+音频 latent，默认 42），官方 API 无 seed 参数
 - **参数（2026-08-12 定案，25 步存疑待验证）**：默认 25 步，但 **v4 832×1248 实测 25 步镜头流转异常**（50 步正常）。待对照实验：固定 v4/832×1248/seed，50 步验证镜头恢复 → 恢复则回 50 步。**未定论前出片优先 50 步**（官方基准）。出片脚本步数已参数化：`bash run_ref2va_15s_3img.sh [host] [seed] [steps]`。flow_shift 12 / cfg 1 系 / fps 24
 - 出片脚本: `ops/run_ref2va_multimg.sh`（单图）/ `ops/run_ref2va_15s.sh`（多图 15s）/ `ops/run_ref2va_15s_3img.sh`（3 图减量版）
+
+### 量化 vs 长片耗时构成（2026-08-14 PRO 6000/H800 实测定案）
+- **每步耗时 = 线性项（GEMM 等，∝帧数）+ 二次项（attention SDPA，∝帧数²）**：
+  - 5s/120帧：11.4s/it = 线性 6.3s (55%) + 二次 5.1s (45%)
+  - 15s/360帧：64.6s/it = 线性 19.0s (29%) + 二次 45.6s (**71%**)
+- **权重量化（int8_convrot / fp8_scaled）只碰 GEMM 部分，碰不到 attention 核心**：
+  - attention = QKV 投影（权重层，可量化）+ SDPA 核心（QK^T/softmax/PV，纯激活无权重，原理上量化不了）
+  - fp8_scaled 在 ComfyUI H3 被反量化成 bf16 计算（日志 "manual cast: torch.bfloat16"），无 fp8 GEMM 路径
+  - **结论：15s 长片主要矛盾（71% 二次项）没被量化 → 任何权重量化天花板 1.4x，实测 H800 int8≈fp8≈94.7s/it（1.0x）**
+- **能碰那 71% 的只有 fp8/int8 attention kernel**（激活量化 + 分块 GEMM）：Sage Attention（`sageattn_qk_int8_pv_fp16`）、vLLM TRTLLM_ATTN FP8 KV cache——这也是 vLLM-Omni 多卡快的原因之一
+- **PRO 6000 attention 三方案实测（2026-08-14）**：
+  - pytorch 基线 11.4s/it → `--use-ck-attention`（comfy_kitchen 内置 QKV 全 int8）7.9s/it → **`--use-sage-attention`（SageAttention 2.2.0）7.66s/it（最终选择：QK int8 + PV fp16，质量风险最小，速度与 ck 打平）**
+  - 15s 外推 ~33s/it（64.6→33）→ 15s/20步 ≈ 11 分钟
+  - PRO 6000 启动参数：`--disable-dynamic-vram --use-sage-attention`（-dynamic-vram 在 PRO 6000 量化张量上崩溃 #15563）
+  - **SageAttention 2.2.0 安装**（PyPI 只有 1.0.6 旧版，2.2.0 必须源码编译）：
+    - `git clone thu-ml/SageAttention && venv python setup.py install`（先 `pip install ninja`，否则 `nvcc fatal: Unknown option '-fopenmp'` #299）
+    - 环境变量 MAX_JOBS=16 NVCC_APPEND_FLAGS="--threads 8"；编译 ~8 分钟
+    - 已部署共享盘 venv（`/root/autodl-fs/comfyui_venv`，全实例通用），源码在 `tools/SageAttention/`
+    - sageattn3（V3=FP4，官方说不适合精度敏感应用）+ 阿里源无此包 → 不追
+  - ComfyUI 重启必须彻底清理（pkill + 删 comfyui.db 锁文件 + 确认端口），否则 DB lock/Port in use 秒空跑（踩坑 2 次）
+  - **质量验证（2026-08-14 用户确认）**：int8_convrot + sage 2.2.0 出片质量与满血 BF16 **基本无差别**（15s 实拍验收：38.3s/it，画面/音频正常）——单卡 H3 出片质量×速度最优解定案
+- 实测速查：H800 int8/fp8 = 94.7s/it；PRO 6000 int8 = 64.6s/it（15s）11.4s/it（5s pytorch）7.9s/it（ck）**7.66s/it（sage）**；5090 社区 3.4s/it（短片低分辨率数据）
 
 ## ⚠️ 参考图数量 ↔ 耗时关系（2026-08-11 实测+调研）
 
