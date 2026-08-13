@@ -209,6 +209,19 @@ uploads/<角色名>/
 ### 起 serve 参考文件（2026-08-11 定型，只认这些）
 
 ### 输出分辨率计算规范（2026-08-12 用户定案，面积预算方案）
+
+**ComfyUI 方案 B 等价实现（2026-08-13 确认）**：ComfyUI 原生 `ResolutionSelector` 节点（`comfy_extras/nodes_resolution.py`）算法与本规范逐字等价：
+```python
+total_pixels = megapixels * 1024 * 1024
+scale = sqrt(total_pixels / (w_ratio * h_ratio))
+width  = round(w_ratio * scale / multiple) * multiple   # multiple=32
+height = round(h_ratio * scale / multiple) * multiple
+```
+- 支持 8 种比例：1:1 / 2:3 / 3:2 / 3:4 / **4:3** / 9:16 / 16:9 / 21:9
+- 验证：4:3 + 1.0MP → 1184×896（与本规范手动计算结果一致）
+- 方案 B 出片：用户指定比例 → ResolutionSelector 选比例+megapixels → 自动算宽高，无需自写计算
+
+
 - **本质约束 = 像素面积 ≈ 1M**（官方 `MINIMAX_H3_OUTPUT_MAX_PIXELS = 768×1344 ≈ 1,032,192`）。社区 #65 证实遵循度随**像素量**（token 数）上升而下降——限制面积即控制遵循度，短边 768 只是官方 1M 面积+9:16 的实现特例，非本质
 - **比例必须用户显式指定（2026-08-13 修正）**：patch 后参考图与画布已解耦（模型只看图内容），**视频比例不能通过输入主图探测**——出片确认清单必须含用户指定的宽高比（如 16:9 / 2:3 / 9:16）
 - **用户不指定比例 → 报错提醒，不出片**（不得默认取主图比例，也不得悄悄用 16:9）
