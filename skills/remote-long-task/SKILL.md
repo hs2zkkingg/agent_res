@@ -45,6 +45,19 @@ description: 远程服务器长任务的正确执行方式：单次阻塞等待�
 
 **根因**：面对新任务时"重新发明等待方式"，而不是套用固定模板。**任何长任务先确认用哪个现成等待脚本，再开始**。
 
+### AutoDL 环境等待落地（2026-08-14 定案，本地 Start-Sleep 轮询反复违反后固化）
+
+- **等待脚本位置**：`wait_until.sh` / `wait_for.sh` 已部署在 AutoDL 共享盘 `/root/autodl-fs/ops/`（所有实例通用，不必每次上传）
+- **远端等待标准调用**（等待必须放远端，本地零 Sleep）：
+  ```
+  1. 本地 Write wrapper .sh（内含 bash /root/autodl-fs/ops/wait_until.sh <COND> <TIMEOUT> <HEALTH>）
+  2. scp 上传 wrapper 到 /tmp/
+  3. ssh host "bash /tmp/wait_wrapper.sh"   # 单次阻塞，本地 Bash timeout = TIMEOUT + 60s 缓冲
+  ```
+- **本地 `Start-Sleep` 唯一允许场景**：setsid 后台启动后的**一次性** 8s 内 pgrep 确认（模板第 2 步）；其余任何"Sleep N 秒再查状态"= 违规
+- **多阶段长流程拆段**：每段独立 wait 短阻塞（<15 分钟），段间返回汇报（详见「多阶段长流程拆段等待」）
+- 违反实例（2026-08-14）：模型复制/ComfyUI 启动期间连续 6 次 `Start-Sleep 90-480s + ssh 查状态`，被用户当场纠正——根因 = 等待前未触发"用哪个等待脚本"自检
+
 ### 等待类型扩展规则（2026-08-13 定案）
 
 **遇到模板不适配的等待类型时，扩展模板而不是重写自定义循环**：
@@ -99,6 +112,11 @@ description: 远程服务器长任务的正确执行方式：单次阻塞等待�
 - 备份/git 入库：见 `mm-workflow-backup` skill（本地备份目录 + git mm_workflow 提交）
 
 ## 健康检查（泛化机制，所有任务适用）
+
+**⚠️ HEALTH_CMD 用 pgrep -f 会自匹配失效（2026-08-14 踩坑）**：
+- `pgrep -f '模式'` 匹配**完整命令行**——而 HEALTH_CMD 作为参数传给 wait_until.sh，模式字符串就在 wait_until 自己的命令行里 → **自匹配** → 健康检查永远通过 → 任务死了也傻等超时（踩坑实例：超分任务 Vulkan 失败已死，健康检查自匹配，wait 傻等 15 分钟才超时）
+- **修正**：进程检查用 `pgrep -x <进程名>`（精确名匹配，不含命令行参数）替代 `pgrep -f`；或用不出现于检查命令自身的特征（如端口 curl）
+
 
 **场景**：任务依赖的守护进程（ComfyUI / vLLM serve / aria2c 等）中途崩溃时，产物数不再增长，等待脚本若不检查进程会一直傻等到超时。
 

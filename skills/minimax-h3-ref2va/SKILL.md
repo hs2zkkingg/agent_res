@@ -273,17 +273,29 @@ height = round(h_ratio * scale / multiple) * multiple
   - **加载范围确认**（源码 pipeline_minimax_h3.py:581 实锤）：`model_path = model_root / ("Ref2VA" if partition=="ref2va" else "FL2VA")` —— ref2va 只加载 **Ref2VA 目录**（transformer 62G + 共享组件 text_encoder 67G/VAE ≈ 133G），**FL2VA/transformer 66G 不加载**
 - **多图**：`input_references=`（复数，可重复传多张）**≤12 张**（本地上限，官方 API ≤9）
 - **单图**：`input_reference=`（与复数互斥，二选一）
-### 本地生成默认后处理流程（2026-08-13 定案, 02:30 策略修正）
+### 本地生成默认后处理流程（2026-08-13 定案, 02:30 策略修正；2026-08-14 插帧默认关闭）
 - **默认出片输出双格式**：
   1. **无损中间格式**（H.264 crf=0, `extra_params.video_codec_options={"crf":"0"}`）——供后续超分插帧
   2. **H.264 High 预览格式**（正常 crf, 文件小）——供用户快速评估
 - **评估门控（超分插帧不自动跑）**：
   1. 通知用户下载**预览格式**评估
   2. 用户评估通过且**显式告知**进行超分插帧 → 才基于**无损数据**执行
-  3. 流程：2x 超分（RealESRGAN_x2plus）→ 2x 插帧（RIFE 24→48fps）→ 最终交付编码（H.264 High, 正常 crf）
+  3. 流程：2x 超分（RealESRGAN_x2plus）→ ~~2x 插帧（RIFE 24→48fps）~~ → 最终交付编码（H.264 High, 正常 crf）
   4. 完成后通知用户下载成品，并**询问是否删除原始无损视频**（文件大 ~100-500MB，用户确认才删）
+- **⚠️ 插帧默认关闭（2026-08-14 用户决策）**：实测 2x 插帧（RIFE 4.26 48fps）引起画面劣化，用户判定"怀疑是插帧引起的"→ **默认只超分不插帧**；`postprocess_torch.sh` 已加 `INTERP` 开关（默认 0=不插帧，`INTERP=1` 才插帧）；超分版交付物 = `<stem>_x2_h264.mp4`（24fps 保持原帧率）
 - 重编码耗时很短（x264 压缩 ~20-60s, 无模型推理），预览格式零额外成本
 - 依据：插帧/超分对压缩伪影敏感，基于无损数据处理质量最优；但超分插帧耗时（3-18 分钟），先预览评估再后处理避免浪费
+
+### torch 后处理工具链（2026-08-14 方案 B ComfyUI 机搭通，AutoDL 共享盘）
+- **位置**：`/root/autodl-fs/tools/`——`Real-ESRGAN`（master 代码+weights/RealESRGAN_x2plus.pth）、`Practical-RIFE`（train_log/ = 4.26 权重 IFNet_HDv3.py+RIFE_HDv3.py+flownet.pkl+refine.py）、`basicsr`（PYTHONPATH 版）、`realesrgan_torch/`、`rife_torch/`、`ffmpeg`（静态 7.0.2）
+- **入口**：`ops/postprocess_torch.sh <input.mp4> [outdir]`（超分→可选插帧→H.264 High crf16 medium），支持断点续跑（产物>1MB 判完成）
+- **依赖**：comfyui_venv python（torch 2.12.1+cu130, numpy 2.4.6）+ opencv-python-headless + ffmpeg-python + pyyaml/scipy/lmdb；basicsr 走 PYTHONPATH（`pip install basicsr` 卡 PEP517 tb-nightly 20 分钟，弃用）
+- **已踩坑（python 3.12 + numpy 2.4 环境）**：
+  - RIFE GitHub 历史 release 被作者删除（2026-08-13）→ 官方 HF 镜像 `hzwer/RIFE`（RIFEv4.26_0921.zip）+ Practical-RIFE 仓库；4.26 配套 Model 封装 `RIFE_HDv3.py` 从 HF 镜像 `lopi999/rife_v4.26` 补
+  - `inference_video.py` patch：skvideo→cv2 生成器（scikit-video 与 numpy 2 不兼容）、moviepy import 移除、`torch.from_numpy(np.transpose(...))` 负 stride → 加 `np.ascontiguousarray`（patch 时注意括号配对，踩过 SyntaxError）
+  - `realesrgan/version.py`、`basicsr/version.py` 构建时生成，clone 后需手补
+  - Real-ESRGAN 推理内嵌 `pip.main` 装 ffmpeg-python（pip 26 已删 pip.main）→ 必须预装 ffmpeg-python
+  - weights 必须放 `Real-ESRGAN/weights/`（否则内嵌下载走 GitHub 直连 150KB/s）
 
 ### 官方 API 端到端生成调用策略（2026-08-13 定案）
 - 官方**无一次调用包圆的 API**（IR 与生成是独立接口）；"端到端效果" = 显式两步或一步直喂

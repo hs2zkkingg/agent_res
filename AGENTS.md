@@ -13,6 +13,12 @@
 - 等待只用 `wait_for.sh`（带 HEALTH_CMD 健康检查，崩溃退出码 3），禁止本地轮询/傻等
 - 出片类同步 API（如 curl /v1/videos/sync）禁止本地阻塞等待：后台提交 + 输出文件完成检测
 
+## 本机后台任务禁止死等（2026-08-14 定案，参考 local-bg-monitor skill）
+- **启动任何 background_process/本机长任务后，禁止长 Sleep 干等**（如 Sleep 120+ 秒才查一次——踩坑实例：报错后死等 3 分钟白等，被用户当场纠正）
+- 必须立即进入**快监听循环**：10~15 秒/轮，每轮检测「进程存活 + 日志尾部错误标记（Traceback/RuntimeError/Error/OutOfMemory/CUDA out）」，错误即停并读日志尾部
+- 日志必须重定向到文件（`> run.log 2>&1`），background_process 的 logs 记录可能丢失，文件永远可查
+- 监听真实 worker 进程（python 子进程），不是 cmd 外壳 pid；`stop` 后台进程后必须按 `Get-CimInstance Win32_Process` + CommandLine 匹配杀残留，确认 CLEAN 再重启
+
 ## 文件写入
 - 修改/追加含中文的文件一律用 Python UTF-8 写，禁止 PowerShell `Add-Content`（默认 ANSI 会乱码）
 
@@ -42,6 +48,12 @@
 - **我们遇到的"简单问题"极大概率社区已经踩过坑**（GitHub issues / HF discussions / 官方 roadmap）
 - 遇到疑似通用问题（压扁、报错、性能异常、参数行为），**先查社区再自己折腾**——多次实测：社区直接命中根因和修复（实例：#5883 压扁根因、#65 分辨率遵循、#59 手部短板、#1769 step-execution、#5700 量化 roadmap）
 - 社区查询渠道：GitHub issues 搜索（关键词 OR 组合）、HF discussions、官方 roadmap issue
+
+## 换方案/换模型前先查官方推荐（2026-08-14 定案，踩坑：fp8 白折腾 50 分钟）
+- **任何"换模型/换量化/换参数"决策执行前，必须先查官方 README/model card 的推荐配置**——HF 模型卡一句话可能直接推翻旧决策
+- **摘要/交接里继承的"推断性结论"不算已验证**：接手后必须先验证再执行，禁止直接照着跑
+- 踩坑实例：摘要记"int8→fp8 提速（#14824 实证）"，实际 Comfy-Org/MiniMax-H3 README 早已写明 "prefer int8_convrot, fp8_scaled only if you can not use int8_convrot"——下载 20 分钟+换模型+测试片 30 分钟全白费，实测 fp8 94.7s/步 ≈ int8 94.8s/步（都反量化 bf16 计算，单卡无 FP8 GEMM 路径）
+- 正确顺序：决策 → 查官方文档/README 验证 → 有官方背书才执行；官方无信息才查 issues/实测
 
 ## 指令完整固化（2026-08-13 定案）
 - **用户指令的完整意图一次固化到位**：接指令时把 ①流程定义 ②参数 ③实现要点**全部**沉淀到 skill/HANDOFF——禁止只执行"最小实现"丢一半（踩坑实例：用户 00:33 定了"2x scale + 2x 插帧"，我只固化了"无损 crf=0"出片，超分+插帧后处理流程漏记，02:22 用户追问才补齐）

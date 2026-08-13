@@ -1,6 +1,11 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
   "model": "deepseek/deepseek-v4-pro",
+  "instructions": [
+    "C:/Users/hs2zking/.config/kilo/skills/remote-long-task/SKILL.md",
+    "C:/Users/hs2zking/.config/kilo/skills/minimax-h3-ref2va/SKILL.md",
+    "C:/Users/hs2zking/.config/kilo/skills/local-bg-monitor/SKILL.md"
+  ],
   "agent": {
     "code": {
       "model": "deepseek/deepseek-v4-pro",
