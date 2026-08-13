@@ -1,3 +1,8 @@
+---
+name: mm-workflow-backup
+description: mm 工作流资产备份管理：本地/git/共享盘三副本矩阵、资产上传流程（脚本→mm_workflow 仓库、提示词→h3/prompts）、备份触发时机（收工前/重大变更后/平台风险时）与校验。适用于备份与同步脚本、skill、文档、资料集资产。
+---
+
 # Skill: mm-workflow-backup
 
 # mm-workflow 备份管理（2026-08-13 定案）

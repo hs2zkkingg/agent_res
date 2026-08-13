@@ -1,3 +1,8 @@
+---
+name: minimax-h3-longtake
+description: MiniMax H3 官方 API 长镜头（一镜到底）拼接备忘：官方单段上限 15s，用 A-B-A 三明治拼接延长。适用于官方 API 生成 >15s 连续长镜头。
+---
+
 # Skill: minimax-h3-longtake
 
 # MiniMax H3 官方 API 长镜头（一镜到底）拼接备忘
