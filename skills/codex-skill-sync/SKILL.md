@@ -1,6 +1,6 @@
 ---
 name: codex-skill-sync
-description: Audit, validate, back up, and deploy personal Codex Skill folders from one or more authoritative Git repositories into the local Codex skills directory. Use when reorganizing Skill ownership, checking source-versus-installed drift, installing or refreshing personal Skills, preparing Skill repository backups, or verifying that each Skill has exactly one authoritative source.
+description: Audit, validate, refresh manifest hashes, back up, and deploy personal Codex Skill folders from one or more authoritative Git repositories into the local Codex skills directory. Use when reorganizing Skill ownership, checking source-versus-installed drift, updating source hashes, installing or refreshing personal Skills, preparing Skill repository backups, or verifying that each Skill has exactly one authoritative source.
 ---
 
 # Codex Skill Sync
@@ -41,6 +41,16 @@ Report these states separately:
 
 Do not describe `MISSING` or `DRIFT` as a failed backup. They describe deployment state; Git status and remote tracking describe backup state.
 
+## Refresh manifest hashes
+
+After changing an authoritative Skill folder, preview deterministic manifest hash updates:
+
+```powershell
+python scripts/skill_sync.py refresh --manifest <manifest> --manifest <manifest>
+```
+
+Review the proposed old and new hashes, then apply the manifest-only update with `--apply`. Use `--strict` in dry-run automation when pending hash updates should return a nonzero status. Refresh never deploys Skills or performs Git operations.
+
 ## Deploy
 
 Run deployment without `--apply` first. This produces a dry-run plan:
@@ -59,10 +69,11 @@ Never point `--install-root` at a repository, project root, drive root, home dir
 
 Before proposing a commit:
 
-1. Run `audit` and inspect every non-`MATCH` state.
-2. Run the official Skill validator against new or materially changed Skill folders.
-3. Scan changed files for credentials and unexpectedly large files.
-4. Show each repository's diff independently.
-5. Keep commit and push as separate confirmation gates.
+1. Run `refresh` as a dry-run, review it, and apply required source hash updates.
+2. Run `audit` and inspect every non-`MATCH` state.
+3. Run the official Skill validator against new or materially changed Skill folders.
+4. Scan changed files for credentials and unexpectedly large files.
+5. Show each repository's diff independently.
+6. Keep commit and push as separate confirmation gates.
 
 The synchronization script never performs Git commits or pushes.

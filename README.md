@@ -8,6 +8,7 @@
 - `skills/<skill-name>/`：完整 Skill 源码，包括 `SKILL.md`、`agents/`、`scripts/`、`references/` 和 `assets/`。
 - `agent-config/AGENTS.md`：全局 Codex 指令的源码权威。
 - `scripts/agent_config_sync.ps1`：全局指令的只读审计、dry-run、备份和部署入口。
+- `scripts/verify_all.ps1`：全局配置、全部 manifest、安装态和仓库变更的统一健康检查入口。
 - `AGENTS.md`：本仓库的维护规则。
 - `kilo.jsonc`：保留的 Kilo 历史配置，不作为 Codex 当前配置来源。
 
@@ -30,11 +31,30 @@ Git 仓库是源码权威；`C:\Users\hs2zking\.codex\skills` 是安装副本。
 
 ```powershell
 .\scripts\agent_config_sync.ps1 audit
+.\scripts\agent_config_sync.ps1 audit -Strict
 .\scripts\agent_config_sync.ps1 deploy
 .\scripts\agent_config_sync.ps1 deploy -Apply
+.\scripts\agent_config_sync.ps1 list-backups
+.\scripts\agent_config_sync.ps1 restore -BackupPath <backup-file>
+.\scripts\agent_config_sync.ps1 restore -BackupPath <backup-file> -Apply
+.\scripts\agent_config_sync.ps1 prune-backups -Keep 10
+.\scripts\agent_config_sync.ps1 prune-backups -Keep 10 -Apply
 ```
 
-部署漂移文件时，脚本会先备份旧安装副本并校验新文件的 SHA-256。修改全局指令后，新任务会更可靠地加载新的指令链。
+脚本优先使用 `CODEX_HOME`，未设置时回退到 `%USERPROFILE%\.codex`；安装目标固定为该目录下的 `AGENTS.md`。部署和恢复采用同目录临时文件校验后替换，并在覆盖前备份当前安装副本。
+
+`restore` 与 `prune-backups` 默认只展示计划，必须显式增加 `-Apply` 才会改动文件。恢复路径必须位于受管备份目录内；清理只按明确的 `-Keep` 数量删除较旧备份。Codex 通常在新任务开始时建立指令链，因此修改全局指令后应创建新任务验证。
+
+## 统一健康检查
+
+默认检查同级的 `agent_res` 与 `mm_workflow` 两份 manifest：
+
+```powershell
+.\scripts\verify_all.ps1
+.\scripts\verify_all.ps1 -RunTests
+```
+
+检查包含：全局 AGENTS 严格匹配、manifest 哈希无待刷新项、Skill 安装态全部匹配、manifest JSON、`git diff --check`、变更文件 UTF-8、常见凭据模式和超过 1 MiB 的意外文件。可通过 `-Manifest`、`-PythonPath`、`-CodexHome` 覆盖可移植位置；脚本只读，不执行部署、Git commit 或 push。
 
 持久本地仓库：`C:\Users\hs2zking\Documents\Codex\projects\agent_res`
 

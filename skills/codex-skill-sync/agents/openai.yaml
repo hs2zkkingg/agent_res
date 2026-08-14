@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Skill Sync"
-  short_description: "审计并部署多个源码仓库中的 Codex Skills"
-  default_prompt: "Use $codex-skill-sync to audit my Skill sources and installed copies before syncing."
+  short_description: "刷新清单、审计并部署多个仓库中的 Codex Skills"
+  default_prompt: "Use $codex-skill-sync to refresh manifest hashes, audit my Skill sources, and safely sync installed copies."

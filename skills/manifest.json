@@ -7,7 +7,7 @@
       "path": "skills/codex-skill-sync",
       "category": "general",
       "deploy": true,
-      "source_sha256": "1169FD22A403004050DEAC99CD9938F224D7544059EDCBA100B72A470F887286"
+      "source_sha256": "111A59C8F13BC0F40ABC85183D01AF8D6EB362F9803BBC3C332F55D865E382B3"
     },
     {
       "name": "comfyui-archive-replay",

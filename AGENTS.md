@@ -22,9 +22,9 @@
 ## 验证
 
 - 新建 Skill 使用当前安装的 Skill Creator 标准结构，并保持 `SKILL.md` 简洁。
-- 使用确定性同步工具刷新 manifest 中对应的完整文件夹 SHA-256，避免手工计算和复制错误。
+- 使用 `codex-skill-sync refresh` 预览并刷新 manifest 中对应的完整文件夹 SHA-256，避免手工计算和复制错误。
 - 检查 UTF-8、frontmatter、`agents/openai.yaml`、重复归属、凭据模式和大文件；敏感信息扫描只报告文件和规则类型，不回显秘密内容。
-- 提交前分别运行同步 audit、`git diff --check` 和敏感信息扫描。
+- 提交前运行 `scripts/verify_all.ps1`；修改同步或配置脚本时增加 `-RunTests`。
 
 ## Git 门禁
 

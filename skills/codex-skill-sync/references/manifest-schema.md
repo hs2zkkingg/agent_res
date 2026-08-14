@@ -28,3 +28,12 @@ Rules:
 - Set `deploy` to false only for a retained source that should not enter the active Codex installation.
 - Calculate `source_sha256` from the sorted relative file paths and file contents of the complete Skill folder. Exclude caches and temporary files.
 - Update `source_sha256` in the same reviewed change whenever the authoritative folder changes.
+
+Preview and apply deterministic hash updates with the bundled script:
+
+```powershell
+python scripts/skill_sync.py refresh --manifest C:\path\to\skills\manifest.json
+python scripts/skill_sync.py refresh --manifest C:\path\to\skills\manifest.json --apply
+```
+
+The refresh command validates manifest ownership and Skill naming, scans changed Skill folders for secret-like content, writes manifests atomically, and does not deploy or run Git commands.

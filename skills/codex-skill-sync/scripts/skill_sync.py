@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit and safely deploy Codex Skill folders from authoritative manifests."""
+"""Audit, refresh, and safely deploy Skills from authoritative manifests."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import tempfile
 from datetime import datetime
 
 
@@ -186,6 +187,55 @@ def print_rows(rows, output_format: str):
         ]))
 
 
+def write_json_atomic(path: Path, data: dict):
+    handle = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        newline="\n",
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+        delete=False,
+    )
+    temporary = Path(handle.name)
+    try:
+        with handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def refresh_manifests(paths: list[Path], apply: bool) -> int:
+    ownership, _ = load_manifests(paths)
+    updates_by_manifest: dict[Path, dict[str, str]] = {}
+    for name, entry in sorted(ownership.items()):
+        source_hash = folder_hash(entry["source"])
+        expected = entry.get("source_sha256", "").upper()
+        if expected == source_hash:
+            continue
+        secret_hits = scan_secrets(entry["source"])
+        if secret_hits:
+            raise SyncError(f"Secret-like content in {name}: {secret_hits}")
+        updates_by_manifest.setdefault(entry["manifest"], {})[name] = source_hash
+        action = "REFRESH" if apply else "REFRESH_DRY_RUN"
+        print(f"{action}\t{name}\t{expected or '-'}\t{source_hash}")
+
+    if apply:
+        for manifest_path, updates in updates_by_manifest.items():
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            for entry in data.get("skills", []):
+                if entry.get("name") in updates:
+                    entry["source_sha256"] = updates[entry["name"]]
+            write_json_atomic(manifest_path, data)
+
+    if not updates_by_manifest:
+        print("REFRESH\tNO_CHANGES")
+    return sum(len(updates) for updates in updates_by_manifest.values())
+
+
 def deploy(rows, ownership, install_root: Path, apply: bool, replace: bool, backup_root: Path | None):
     protected = {"DRIFT", "SOURCE_HASH_MISMATCH"}
     if replace and not backup_root:
@@ -226,7 +276,7 @@ def deploy(rows, ownership, install_root: Path, apply: bool, replace: bool, back
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("audit", "deploy"))
+    parser.add_argument("command", choices=("audit", "refresh", "deploy"))
     parser.add_argument("--manifest", action="append", type=Path)
     parser.add_argument("--install-root", type=Path)
     parser.add_argument("--format", choices=("table", "json"), default="table")
@@ -245,6 +295,13 @@ def main() -> int:
         manifest_args = [Path(item) for item in raw.split(os.pathsep) if item]
     if not manifest_args:
         raise SyncError("Provide --manifest or CODEX_SKILL_MANIFESTS")
+
+    if args.command == "refresh":
+        changed = refresh_manifests(manifest_args, args.apply)
+        if args.strict and changed:
+            return 2
+        return 0
+
     install_root = (args.install_root or Path(os.environ.get("CODEX_SKILLS_ROOT", Path.home() / ".codex" / "skills"))).resolve()
     if install_root in {Path.home().resolve(), Path(install_root.anchor).resolve()}:
         raise SyncError(f"Unsafe install root: {install_root}")
