@@ -1,0 +1,5 @@
+interface:
+  display_name: "本机后台任务监控"
+  short_description: "监控本机长任务、真实进程、日志错误和进度"
+  default_prompt: "使用 $local-bg-monitor 监控这个本机后台任务。"
+

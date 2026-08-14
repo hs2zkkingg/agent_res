@@ -1,0 +1,5 @@
+interface:
+  display_name: "图像批量生成"
+  short_description: "规范批量出图的随机种子、提交和结果检查"
+  default_prompt: "使用 $image-batch-generation 设计可靠的批量出图任务。"
+

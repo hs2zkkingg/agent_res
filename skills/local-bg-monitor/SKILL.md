@@ -1,38 +1,34 @@
 ---
 name: local-bg-monitor
-description: "本机后台任务快监听纪律：background_process 启动后禁止长 Sleep 死等，必须 10-15 秒一轮快监听（进程存活 + 日志错误标记），错误即停。适用于本机长任务/服务监听。"
+description: "监控本机后台任务和服务：启动后快速检查真实 worker、日志错误标记和进度，避免长时间无反馈等待。用于本机训练、推理、下载、构建或服务启动。"
 ---
 
-# 本机后台任务快监听纪律（local-bg-monitor）
+# 本机后台任务监控
 
-## 铁律
-- **启动任何 background_process / 长任务后，禁止长 Sleep 死等**（如 Sleep 120/180 秒再查一次）
-- 必须立即进入**快监听循环**：10~15 秒一轮，每轮检测「进程存活 + 日志尾部错误标记」，错误即停并读日志尾部
-- 背景：曾多次发生"启动后报错 → 死等 2~3 分钟才查 → 白等"，用户明令监听状态
+## 核心纪律
 
-## 快监听循环模板（PowerShell 5.1）
-```powershell
-$pid2 = <目标pid>; $log = "<日志文件绝对路径>";
-for ($i=0; $i -lt 50; $i++) {
-  Start-Sleep -Seconds 12
-  $alive = Get-Process -Id $pid2 -ErrorAction SilentlyContinue
-  $tail = ""
-  if (Test-Path $log) { $tail = (Get-Content $log -Tail 3 -Encoding UTF8) -join " | " }
-  if (-not $alive) { Write-Output "EXIT_at_$($i*12)s"; Write-Output $tail; break }
-  if ($tail -match "Traceback|RuntimeError|ValueError|OutOfMemory|CUDA out|Error:") { Write-Output "ERR_at_$($i*12)s: $tail"; break }
-  if ($i -eq 49) { Write-Output "ALIVE_600s: $tail" }
-}
-```
-- 轮数 × 间隔 = 监听上限；到达上限仍存活 → 报告当前进度尾部，重新起一轮
-- 训练类任务另加进度检测：日志出现 `Epoch|Step|loss` 说明在正常推进；出现自定义错误标记（如 "WARNING Failed to open"）单独处理
+- 启动后台任务后立即进入监控，不要先长时间 `Sleep`。
+- 首轮在 10～15 秒内检查；后续使用当前 Codex 环境提供的等待机制分段获取输出，单次等待不超过 60 秒。
+- 每轮同时检查真实 worker 是否存活、日志尾部是否出现错误、任务是否产生正常进度。
+- 错误出现后立即停止无意义等待，读取日志上下文并报告。
+- 持续运行但未完成时，定期向用户汇报当前进度，不让用户在无更新状态下等待超过 60 秒。
 
-## 关键坑（实测踩坑）
-1. **日志必须重定向到文件**：`cmd /c "xxx > run.log 2>&1"`。background_process 的 logs 有时拿不到（进程结束后记录被清），文件永远可查
-2. **监听真实 worker 进程，不是 cmd 外壳 pid**：cmd 会先退出而 python 子进程还在跑。用
-   `Get-CimInstance Win32_Process -Filter "Name like '%python%'" | Where-Object { $_.CommandLine -match "train.py" }` 检测
-3. **stop 后台进程 ≠ 杀干净子进程**：cmd 外壳被杀后 python 子进程残留（占显存/锁资源）。stop 后必须再查 `Win32_Process` 按 CommandLine 匹配杀掉残留，确认 `CLEAN` 再重启
-4. 多进程残留会互相干扰（如 pyarrow 文件打开失败、端口占用），报错前先确认没有旧进程活着
+## 日志与进程
 
-## 适用场景
-- 本机模型训练/推理/下载等任何耗时命令
-- 与远程 ssh 长任务区分：远程走 remote-long-task skill（wait_for.sh + 状态文件），本机走本 skill（快监听循环）
+- 把标准输出和错误输出写入持久日志文件，例如 `run.log`；不要只依赖临时终端记录。
+- 检查 `Traceback`、`RuntimeError`、`ValueError`、`OutOfMemory`、`CUDA out`、`Error:` 等错误标记。
+- 训练任务同时检查 `Epoch`、`Step`、`loss` 等正常进度标记。
+- 监控真实 Python 或其他 worker 进程，而不是只看 `cmd`、PowerShell 等外壳进程。
+- Windows 下可用 `Get-CimInstance Win32_Process` 结合 `CommandLine` 定位目标 worker。
+
+## 停止与重启
+
+- 停止后台任务后，再次检查与任务命令行匹配的子进程。
+- 确认没有残留进程、端口占用或锁定资源后，才允许重启。
+- 多进程任务报错时，先排除旧 worker 残留造成的文件、端口或显存冲突。
+
+## 适用边界
+
+- 本 Skill 用于本机长任务、服务启动、训练、推理、下载和构建。
+- 远程 SSH 长任务使用 `remote-long-task`，通过远端状态文件、日志和健康检查判断完成。
+- 本 Skill 只负责监控，不自动授权启动 GPU 生成、训练或其他高成本任务；这些操作仍需符合用户确认门禁。

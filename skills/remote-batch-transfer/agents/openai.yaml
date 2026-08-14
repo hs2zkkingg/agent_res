@@ -1,0 +1,5 @@
+interface:
+  display_name: "远程批量传输"
+  short_description: "压缩、打包并可靠传输远程批量文件"
+  default_prompt: "使用 $remote-batch-transfer 规划这批远程文件的传输。"
+

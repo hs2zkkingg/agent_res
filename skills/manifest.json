@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "repository": "agent_res",
+  "skills": [
+    {
+      "name": "codex-skill-sync",
+      "path": "skills/codex-skill-sync",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "1169FD22A403004050DEAC99CD9938F224D7544059EDCBA100B72A470F887286"
+    },
+    {
+      "name": "comfyui-archive-replay",
+      "path": "skills/comfyui-archive-replay",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "B19A44E59FB0A3A67C0A957861D1880BF3D3DDDD7BA8F3E3C071646325724ABC"
+    },
+    {
+      "name": "image-batch-generation",
+      "path": "skills/image-batch-generation",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "DACE61FF740833E96375487A65871DD05FC5AD71E32FF6AF2F2696BCC851FBC6"
+    },
+    {
+      "name": "local-bg-monitor",
+      "path": "skills/local-bg-monitor",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "5D19458A65F72BCFC6A68E6A702CD0EA0B53C8CA8CA4274042207D798F3B021E"
+    },
+    {
+      "name": "remote-batch-transfer",
+      "path": "skills/remote-batch-transfer",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "CBC793547D10A87CA65673F7AA964B2DBFC4998450442B4A822DABC6A54229A7"
+    },
+    {
+      "name": "remote-long-task",
+      "path": "skills/remote-long-task",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "EEEBD1F5133A5E4CE756D203FDD829408332F35D3831E1E1FE88A2AC9E5B7EA2"
+    }
+  ]
+}

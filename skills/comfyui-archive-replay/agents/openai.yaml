@@ -1,0 +1,4 @@
+interface:
+  display_name: "ComfyUI Archive & Replay"
+  short_description: "Archive, verify, inspect, and replay ComfyUI PNG results"
+  default_prompt: "Use $comfyui-archive-replay to archive and verify my latest ComfyUI results."

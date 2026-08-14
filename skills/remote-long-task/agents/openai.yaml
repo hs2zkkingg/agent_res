@@ -1,0 +1,5 @@
+interface:
+  display_name: "远程长任务"
+  short_description: "可靠启动、等待、监控和恢复远程长任务"
+  default_prompt: "使用 $remote-long-task 执行并监控这个远程长任务。"
+
