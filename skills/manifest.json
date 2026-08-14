@@ -42,7 +42,7 @@
       "path": "skills/remote-long-task",
       "category": "general",
       "deploy": true,
-      "source_sha256": "EEEBD1F5133A5E4CE756D203FDD829408332F35D3831E1E1FE88A2AC9E5B7EA2"
+      "source_sha256": "60D4BB4271A9C046C4DDD63C4DE2F984026E985D6B969495B4EFC3EDAF3FE34C"
     }
   ]
 }
