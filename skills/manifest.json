@@ -35,7 +35,7 @@
       "path": "skills/remote-batch-transfer",
       "category": "general",
       "deploy": true,
-      "source_sha256": "CBC793547D10A87CA65673F7AA964B2DBFC4998450442B4A822DABC6A54229A7"
+      "source_sha256": "70B99F5E140B6D9974CCA9088058387DEA6E6047758844718D5812B146E7CB06"
     },
     {
       "name": "remote-long-task",
