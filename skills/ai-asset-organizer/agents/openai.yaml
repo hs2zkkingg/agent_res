@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Asset Organizer"
+  short_description: "Classify, archive, verify, and catalog AI assets"
+  default_prompt: "Use $ai-asset-organizer to classify and dry-run the archival of these AI assets."

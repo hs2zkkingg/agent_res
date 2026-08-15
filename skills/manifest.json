@@ -3,6 +3,13 @@
   "repository": "agent_res",
   "skills": [
     {
+      "name": "ai-asset-organizer",
+      "path": "skills/ai-asset-organizer",
+      "category": "general",
+      "deploy": true,
+      "source_sha256": "67929DF810CCBEBC7BF53A7FE9532D995E0E00C6DC00EF4B01E40E6216B4F660"
+    },
+    {
       "name": "codex-skill-sync",
       "path": "skills/codex-skill-sync",
       "category": "general",
