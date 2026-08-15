@@ -9,6 +9,7 @@
 - `agent-config/AGENTS.md`：全局 Codex 指令的源码权威。
 - `scripts/agent_config_sync.ps1`：全局指令的只读审计、dry-run、备份和部署入口。
 - `scripts/verify_all.ps1`：全局配置、全部 manifest、安装态和仓库变更的统一健康检查入口。
+- `scripts/ai-asset-migration/`：参数化、默认 dry-run 的资产复制与 SHA-256 校验工具；不创建旧路径兼容链接。
 - `AGENTS.md`：本仓库的维护规则。
 - `kilo.jsonc`：保留的 Kilo 历史配置，不作为 Codex 当前配置来源。
 

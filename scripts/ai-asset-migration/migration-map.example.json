@@ -1,0 +1,7 @@
+[
+  {
+    "name": "project-assets",
+    "source": "${USER_ROOT}\\Documents\\Codex\\assets\\example-project",
+    "destination": "${AI_ROOT}\\projects\\example-project\\assets"
+  }
+]
