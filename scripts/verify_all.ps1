@@ -142,6 +142,10 @@ if ($RunTests) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Agent config tests failed'
     }
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'tests\test_verify_ai_workspace.ps1')
+    if ($LASTEXITCODE -ne 0) {
+        throw 'AI workspace registry tests failed'
+    }
     Write-Output 'PASS tests'
 }
 

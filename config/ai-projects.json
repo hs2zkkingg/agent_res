@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "description": "Portable inventory of authoritative AI repositories, local third-party worktrees, environments, and external asset roots.",
+  "environment_lock": "${CODEX_PROJECTS_ROOT}\\mm_workflow\\docs\\environments\\local-ai-toolchains.json",
+  "projects": [
+    {
+      "id": "agent-res",
+      "kind": "authoritative",
+      "root": "${CODEX_PROJECTS_ROOT}\\agent_res",
+      "remote": "https://github.com/hs2zkkingg/agent_res.git",
+      "branch": "main",
+      "require_clean": true,
+      "require_remote_match": true,
+      "verification": "scripts\\verify_all.ps1 -RunTests"
+    },
+    {
+      "id": "mm-workflow",
+      "kind": "authoritative",
+      "root": "${CODEX_PROJECTS_ROOT}\\mm_workflow",
+      "remote": "https://github.com/hs2zkkingg/mm_workflow.git",
+      "branch": "main",
+      "require_clean": true,
+      "require_remote_match": true,
+      "verification": "agent_res scripts\\verify_all.ps1 -RunTests"
+    },
+    {
+      "id": "fe7-bizhawk-agent",
+      "kind": "authoritative",
+      "root": "${AI_ROOT}\\projects\\emulator\\FE7-BizHawk-Agent",
+      "remote": "https://github.com/hs2zkkingg/FE7-BizHawk-Agent.git",
+      "branch": "main",
+      "require_clean": true,
+      "require_remote_match": true,
+      "verification": "agent\\Preflight.ps1",
+      "dependency_inventory": "${AI_ROOT}\\projects\\emulator\\FE7-BizHawk-Agent\\dependencies.lock.json",
+      "excluded_assets": ["rom", "tools", "installers", "logs", "research"]
+    },
+    {
+      "id": "kohya-ss",
+      "kind": "third-party",
+      "root": "${AI_ROOT}\\projects\\image\\kohya_ss",
+      "dependency_lock": {
+        "path": "${CODEX_PROJECTS_ROOT}\\mm_workflow\\docs\\dependencies\\vendor-lock.json",
+        "id": "kohya-ss"
+      },
+      "environment": "kohya",
+      "allow_worktree_changes": true,
+      "excluded_assets": ["venv", "train images", "models", "output weights", "samples", "logs"]
+    },
+    {
+      "id": "cosyvoice",
+      "kind": "third-party",
+      "root": "${AI_ROOT}\\projects\\voice\\CosyVoice",
+      "dependency_lock": {
+        "path": "${CODEX_PROJECTS_ROOT}\\mm_workflow\\docs\\dependencies\\vendor-lock.json",
+        "id": "cosyvoice"
+      },
+      "environment": "cosyvoice",
+      "allow_worktree_changes": true,
+      "runtime_variables": ["SANATSU_COSYVOICE_ROOT", "SANATSU_SOURCE_AUDIO_ROOT", "SANATSU_OUTPUT_ROOT"]
+    },
+    {
+      "id": "gpt-sovits-v4",
+      "kind": "third-party",
+      "root": "${AI_ROOT}\\projects\\voice\\GPT-SoVITS",
+      "dependency_lock": {
+        "path": "${CODEX_PROJECTS_ROOT}\\mm_workflow\\docs\\dependencies\\vendor-lock.json",
+        "id": "gpt-sovits-v4"
+      },
+      "environment": "gpt-sovits-v4",
+      "allow_worktree_changes": true,
+      "runtime_variables": ["SANATSU_GPTSOVITS_ROOT", "SANATSU_SOURCE_AUDIO_ROOT"]
+    },
+    {
+      "id": "rvc",
+      "kind": "third-party",
+      "root": "${AI_ROOT}\\projects\\voice\\RVC",
+      "dependency_lock": {
+        "path": "${CODEX_PROJECTS_ROOT}\\mm_workflow\\docs\\dependencies\\vendor-lock.json",
+        "id": "rvc"
+      },
+      "environment": "rvc",
+      "allow_worktree_changes": true,
+      "runtime_variables": ["SANATSU_RVC_ROOT", "SANATSU_SOURCE_AUDIO_ROOT", "SANATSU_OUTPUT_ROOT"]
+    }
+  ],
+  "external_assets": [
+    {
+      "id": "mm-workflow-assets",
+      "path": "${AI_ROOT}\\projects\\mm_workflow\\assets",
+      "required": true,
+      "protection": "external SHA-256 manifests; never copy media into Git"
+    },
+    {
+      "id": "sanatsu-source-audio",
+      "path": "${SANATSU_SOURCE_AUDIO_ROOT}",
+      "required": false,
+      "protection": "source media remains outside Git"
+    }
+  ]
+}

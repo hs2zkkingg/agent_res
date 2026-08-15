@@ -10,6 +10,8 @@
 - `scripts/agent_config_sync.ps1`：全局指令的只读审计、dry-run、备份和部署入口。
 - `scripts/verify_all.ps1`：全局配置、全部 manifest、安装态和仓库变更的统一健康检查入口。
 - `scripts/ai-asset-migration/`：参数化、默认 dry-run 的资产复制与 SHA-256 校验工具；不创建旧路径兼容链接。
+- `config/ai-projects.json`：机器无关的 AI 工程、第三方工作树、环境与外部资产总清单。
+- `scripts/verify_ai_workspace.ps1`：统一只读工作区健康检查，串联 Git、Skill、依赖基线和环境锁验证。
 - `AGENTS.md`：本仓库的维护规则。
 - `kilo.jsonc`：保留的 Kilo 历史配置，不作为 Codex 当前配置来源。
 
@@ -56,6 +58,15 @@ Git 仓库是源码权威；`C:\Users\hs2zking\.codex\skills` 是安装副本。
 ```
 
 检查包含：全局 AGENTS 严格匹配、manifest 哈希无待刷新项、Skill 安装态全部匹配、manifest JSON、`git diff --check`、变更文件 UTF-8、常见凭据模式和超过 1 MiB 的意外文件。可通过 `-Manifest`、`-PythonPath`、`-CodexHome` 覆盖可移植位置；脚本只读，不执行部署、Git commit 或 push。
+
+跨工程总检查：
+
+```powershell
+.\scripts\verify_ai_workspace.ps1
+.\scripts\verify_ai_workspace.ps1 -Strict
+```
+
+默认检查权威仓库是否与远端一致、第三方仓库是否仍位于锁定 commit、外部资产根目录、Skill/Agent 配置健康度和四套本地工具链关键版本。Kohya 等已知不可启动的环境会报告 `WARN`；`-Strict` 会把警告提升为失败。该脚本不启动模型、CUDA、训练、推理或 ComfyUI。
 
 持久本地仓库：`C:\Users\hs2zking\Documents\Codex\projects\agent_res`
 
